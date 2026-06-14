@@ -1150,11 +1150,17 @@ function Note({ noteId }) {
   const handleMouseDown = async (e) => {
     // Only drag on left click and ignore click on buttons/inputs/pickers
     if (e.button === 0 && !e.target.closest("button") && !e.target.closest("input") && !e.target.closest(".segment")) {
-      try {
-        const appWindow = getCurrentWindow();
-        await appWindow.startDragging();
-      } catch (err) {
-        console.error("Error starting dragging:", err);
+      if (e.detail === 2) {
+        // Double click detected: toggle collapse/expand
+        toggleCollapse();
+      } else {
+        // Single click detected: start dragging
+        try {
+          const appWindow = getCurrentWindow();
+          await appWindow.startDragging();
+        } catch (err) {
+          console.error("Error starting dragging:", err);
+        }
       }
     }
   };
@@ -1236,7 +1242,6 @@ function Note({ noteId }) {
       <div 
         className="note-header" 
         onMouseDown={handleMouseDown}
-        onDoubleClick={toggleCollapse}
       >
         <div className="header-left">
           <button className="action-btn" onClick={handleCreateNewNote} title="新建便签">
