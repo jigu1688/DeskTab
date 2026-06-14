@@ -1228,12 +1228,15 @@ html, body, #root {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
 }
 
-/* When settings popover is open in collapsed state, disable header's backdrop-filter
-   because Chrome extends the blur paint boundary to cover all overflow children */
+/* When settings popover is open in collapsed state, reset header to normal
+   (container itself provides the background, no need for header-level overrides) */
 .note-container.is-collapsed.settings-open .note-header {
+  border-radius: 0;
+  border: none;
+  background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  background: rgba(var(--note-bg-rgb), 1);
+  box-shadow: none;
 }
 
 .note-container.is-collapsed .note-body,
@@ -1330,16 +1333,7 @@ html, body, #root {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
-/* In collapsed state, popover uses opaque background (no blur since header's backdrop-filter is disabled) */
-.note-container.is-collapsed .settings-menu-popover {
-  background: #ffffff;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
 
-.note-container.is-collapsed.morandi-dark .settings-menu-popover {
-  background: #1e293b;
-}
 
 .settings-menu-section {
   display: flex;
@@ -1414,15 +1408,19 @@ html, body, #root {
   overflow: visible !important;
 }
 
-/* Collapsed + settings-open: expand container to 380px to fit popover INSIDE it,
-   but keep the container fully invisible. Use overflow:hidden to avoid
-   Chromium GPU compositor extending any blur paint boundaries. */
+/* Collapsed + settings-open: restore container to normal visual appearance.
+   Container expands to fit the popover, shows its normal background/blur,
+   while note-body and note-footer remain hidden. */
 .note-container.is-collapsed.settings-open {
   height: 380px !important;
   min-height: 380px !important;
   max-height: 380px !important;
-  overflow: hidden !important;
-  border-radius: 0 !important;
+  background: rgba(var(--note-bg-rgb), var(--note-opacity)) !important;
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px) !important;
+  border: 1px solid rgba(var(--note-border-rgb), 0.2) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 2px 10px rgba(0, 0, 0, 0.1) !important;
 }
 
 
