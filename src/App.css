@@ -1414,9 +1414,15 @@ html, body, #root {
   overflow: visible !important;
 }
 
+/* Collapsed + settings-open: expand container to 380px to fit popover INSIDE it,
+   but keep the container fully invisible. Use overflow:hidden to avoid
+   Chromium GPU compositor extending any blur paint boundaries. */
 .note-container.is-collapsed.settings-open {
-  height: 40px !important;
-  min-height: 40px !important;
-  max-height: 40px !important;
+  height: 380px !important;
+  min-height: 380px !important;
+  max-height: 380px !important;
+  overflow: hidden !important;
+  border-radius: 0 !important;
 }
+
 
