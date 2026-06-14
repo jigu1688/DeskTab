@@ -593,66 +593,16 @@ function Note({ noteId }) {
         });
         if (isMounted) unlisteners.push(unResize);
 
-        // Move observer (With magnetic snapping)
+        // Move observer (Save position without snapping)
         const unMove = await appWindow.onMoved(async ({ payload: pos }) => {
           currentPos.current = { x: pos.x, y: pos.y };
           if (isPositioning.current || isHidden.current) return;
-          if (!autoHideEnabled) {
-            // If auto-hide is disabled, we do not perform edge-snapping at all.
-            // We just save the user's manual drag-and-drop coordinates and return early.
-            const list = await getNotesList();
-            const index = list.findIndex((n) => n.id === noteId);
-            if (index !== -1) {
-              list[index].x = pos.x;
-              list[index].y = pos.y;
-              await saveNotesList(list);
-            }
-            return;
-          }
 
-          const monitor = await currentMonitor();
-          if (!monitor) return;
-
-          const size = await appWindow.outerSize();
-          const snapThreshold = 25 * monitor.scaleFactor; // 25 logical pixels to physical
-          let newX = pos.x;
-          let newY = pos.y;
-          let snapped = false;
-
-          // Snap Left
-          if (Math.abs(pos.x) < snapThreshold) {
-            newX = 0;
-            snapped = true;
-          }
-          // Snap Right
-          else if (Math.abs(pos.x + size.width - monitor.size.width) < snapThreshold) {
-            newX = monitor.size.width - size.width;
-            snapped = true;
-          }
-
-          // Snap Top
-          if (Math.abs(pos.y) < snapThreshold) {
-            newY = 0;
-            snapped = true;
-          }
-
-          if (snapped) {
-            isPositioning.current = true;
-            try {
-              await appWindow.setPosition(new PhysicalPosition(newX, newY));
-            } catch (err) {
-              console.error("Error setting window snap position:", err);
-            } finally {
-              isPositioning.current = false;
-            }
-          }
-
-          // Save position
           const list = await getNotesList();
           const index = list.findIndex((n) => n.id === noteId);
           if (index !== -1) {
-            list[index].x = newX;
-            list[index].y = newY;
+            list[index].x = pos.x;
+            list[index].y = pos.y;
             await saveNotesList(list);
           }
         });
