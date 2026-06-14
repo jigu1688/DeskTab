@@ -1377,3 +1377,8 @@ html, body, #root {
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
 }
+
+.note-container.settings-open {
+  overflow: visible !important;
+}
+

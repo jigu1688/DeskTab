@@ -565,6 +565,28 @@ function Note({ noteId }) {
     };
   }, []);
 
+  // Resize window to fit settings menu popover when collapsed
+  useEffect(() => {
+    if (!noteId) return;
+
+    const adjustWindowForPopover = async () => {
+      const appWindow = getCurrentWindow();
+      if (isCollapsed) {
+        if (showSettingsMenu) {
+          // Allow size adjustments and increase window height to fit settings menu popover (380px)
+          await appWindow.setMinSize(new LogicalSize(200, 380)).catch(console.error);
+          await appWindow.setSize(new LogicalSize(expandedWidth.current, 380)).catch(console.error);
+        } else {
+          // Shrink window height back to 40px
+          await appWindow.setMinSize(new LogicalSize(200, 40)).catch(console.error);
+          await appWindow.setSize(new LogicalSize(expandedWidth.current, 40)).catch(console.error);
+        }
+      }
+    };
+
+    adjustWindowForPopover();
+  }, [showSettingsMenu, isCollapsed, noteId]);
+
   // Snapping & Auto-hide event listeners
   useEffect(() => {
     if (!noteId) return;
@@ -1068,6 +1090,10 @@ function Note({ noteId }) {
     setIsCollapsed(nextCollapsed);
     isCollapsedRef.current = nextCollapsed;
 
+    // Reset settings popover menu states on collapse/expand
+    setShowSettingsMenu(false);
+    setShowReminderPicker(false);
+
     const size = await appWindow.innerSize();
     const monitor = await currentMonitor();
     const scaleFactor = monitor ? monitor.scaleFactor : 1;
@@ -1191,7 +1217,7 @@ function Note({ noteId }) {
 
   return (
     <div 
-      className={`note-container morandi-${color} ${pinned ? "pinned" : ""} ${isCollapsed ? "is-collapsed" : ""}`}
+      className={`note-container morandi-${color} ${pinned ? "pinned" : ""} ${isCollapsed ? "is-collapsed" : ""} ${showSettingsMenu ? "settings-open" : ""}`}
       style={{
         "--note-opacity": opacity,
         "--note-header-opacity": Math.min(1.0, opacity + 0.1),
