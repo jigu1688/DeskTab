@@ -1228,6 +1228,14 @@ html, body, #root {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
 }
 
+/* When settings popover is open in collapsed state, disable header's backdrop-filter
+   because Chrome extends the blur paint boundary to cover all overflow children */
+.note-container.is-collapsed.settings-open .note-header {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(var(--note-bg-rgb), 1);
+}
+
 .note-container.is-collapsed .note-body,
 .note-container.is-collapsed .note-footer {
   display: none !important;
@@ -1322,7 +1330,7 @@ html, body, #root {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
-/* In collapsed state the container is transparent, so disable popover blur to avoid frosting the desktop */
+/* In collapsed state, popover uses opaque background (no blur since header's backdrop-filter is disabled) */
 .note-container.is-collapsed .settings-menu-popover {
   background: #ffffff;
   backdrop-filter: none;
