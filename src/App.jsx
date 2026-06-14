@@ -1408,10 +1408,10 @@ function Note({ noteId }) {
               </div>
             )}
           </div>
-          
-          {/* Collapsed title shown on the left */}
-          {isCollapsed && <div className="collapsed-title">{getNoteTitle()}</div>}
         </div>
+        
+        {/* Collapsed title shown on the left */}
+        {isCollapsed && <div className="collapsed-title">{getNoteTitle()}</div>}
 
         {/* Expanded title shown in the center when not hovered */}
         {!isCollapsed && <div className="expanded-title-center">{getNoteTitle()}</div>}

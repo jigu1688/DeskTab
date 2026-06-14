@@ -1258,13 +1258,16 @@ html, body, #root {
 
 /* Collapsed title on the left (visible when NOT hovered) */
 .collapsed-title {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 12px;
   font-weight: 600;
   color: var(--note-text);
   opacity: 0.8;
   pointer-events: none;
   transition: opacity 0.2s ease-in-out;
-  margin-left: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
