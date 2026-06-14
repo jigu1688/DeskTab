@@ -1,7 +1,72 @@
-# Tauri + React
+# DeskTab 📌
 
-This template should help get you started developing with Tauri and React in Vite.
+DeskTab 是一款专为 Windows 桌面打造的极简、轻量、高颜值的 **3D 莫兰迪色系拟物化便签软件**。基于 **Tauri v2** + **React** + **Rust** 架构开发，采用本地文件持久化，具备贴边隐藏、磁吸附、便签管理中心、Markdown 待办清单及系统自启动等一系列高级交互功能。
 
-## Recommended IDE Setup
+---
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## 🎨 核心特性
+
+- **🎨 莫兰迪拟物设计**：采用极具设计感的莫兰迪（Morandi）冷暖色调，无边框设计，配有柔和的拟物化阴影及磨砂玻璃半透明质感。支持内联无缝调节便签不透明度。
+- **📝 交互式 Markdown 待办**：
+  - 拥有快捷格式化工具栏，支持一键/快捷键（`Ctrl + Shift + C` 等）生成待办清单 (`- [ ]`)、大标题 (`#`)、粗体 (`**`) 与斜体 (`*`)。
+  - 预览模式下，可直接点击勾选待办，系统将实时划掉任务并更新底层的 Markdown 纯文本。
+  - 双击便签空白区域即可极速切换至编辑模式，且支持 `12px` 至 `28px` 的字号实时微调。
+- **🧲 磁吸附与贴边智能折叠**：
+  - 拖拽便签靠近屏幕的上、左、右边缘 25 物理像素内时，会自动磁吸附贴靠。
+  - 在吸附状态下，当鼠标移开且便签未处于输入焦点时，便签会自动向外滑出收纳隐藏（只留 12 像素的细边用于呼吸提示）；鼠标重新滑过边缘细条即可瞬间滑出复原。
+- **📁 全局便签管理中心 (Notes Hub)**：
+  - 双击托盘或点击便签管理图标即可开启独立的管理中心。
+  - 支持便签的全文模糊检索、莫兰迪色系一键筛选、呼叫并强焦原便签。
+  - 支持回收站机制（软删除、卡片恢复、彻底清空垃圾箱）。
+- **⏱️ 后台定时提醒与通知**：
+  - 支持为每一张便签设定特定的提醒时间。
+  - 由 Rust 异步后台线程每 5 秒扫描本地数据文件，即使便签窗口全部关闭（留驻系统托盘），时间到达时仍能弹出 Windows 系统级横幅提醒通知。
+- **🚀 进程守护与系统自启**：
+  - **开机自启动**：在管理中心左下角一键开关，通过 Rust `winreg` 直接读写 Windows 注册表，无残留且不占系统资源。
+  - **单实例进程锁**：使用 `tauri-plugin-single-instance` 限制全局只允许运行一个主进程。再次双击启动或自启并发时，不会产生多余托盘图标，并会自动拉起、聚焦主进程中所有的活动窗口，保障系统性能。
+
+---
+
+## 🛠️ 技术栈
+
+* **前端 (Frontend)**：React 19, Vite, Vanilla CSS (高自适应磨砂玻璃体系)
+* **后端 (Backend)**：Rust 1.96+, Tauri v2 (基于 Windows 2026 生成工具/WebView2)
+* **数据存储**：操作系统特定配置目录下的本地 `notes.json` 文件同步读写，不依赖网络，隐私安全无虞
+* **开机自启**：Rust `winreg` (Windows 注册表)
+* **单实例限制**：`tauri-plugin-single-instance`
+
+---
+
+## 🚀 开发者指南
+
+### 环境准备
+1. 确保您的电脑安装了 **Node.js** (LTS)。
+2. 安装 **Rust 编译环境** (包含 `rustc`, `cargo`, 推荐使用 `rustup` 安装)。
+3. 安装 C++ 生成工具 (Windows 上需安装 Visual Studio Build Tools 核心组件)。
+
+### 安装依赖
+在项目根目录下执行：
+```bash
+npm install
+```
+
+### 本地开发调试
+启动前端热更新与 Tauri 后端调试窗口：
+```bash
+npm run tauri dev
+```
+
+### 生产环境打包构建
+生成最终的可执行文件和 NSIS 安装包：
+```bash
+npm run tauri build
+```
+打包成功后，可在以下位置找到输出：
+* **NSIS 安装引导包**：`src-tauri/target/release/bundle/nsis/DeskTab_0.1.0_x64-setup.exe`
+* **独立免安装绿色版**：`src-tauri/target/release/desktab.exe`
+
+---
+
+## 📝 贡献与许可
+
+本项目代码遵循 MIT 许可证开源。如有任何功能建议或 Bug 反馈，欢迎提交 Issue。
