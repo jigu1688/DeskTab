@@ -565,27 +565,7 @@ function Note({ noteId }) {
     };
   }, []);
 
-  // Resize window to fit settings menu popover when collapsed
-  useEffect(() => {
-    if (!noteId) return;
 
-    const adjustWindowForPopover = async () => {
-      const appWindow = getCurrentWindow();
-      if (isCollapsed) {
-        if (showSettingsMenu) {
-          // Allow size adjustments and increase window height to fit settings menu popover (380px)
-          await appWindow.setMinSize(new LogicalSize(200, 380)).catch(console.error);
-          await appWindow.setSize(new LogicalSize(expandedWidth.current, 380)).catch(console.error);
-        } else {
-          // Shrink window height back to 40px
-          await appWindow.setMinSize(new LogicalSize(200, 40)).catch(console.error);
-          await appWindow.setSize(new LogicalSize(expandedWidth.current, 40)).catch(console.error);
-        }
-      }
-    };
-
-    adjustWindowForPopover();
-  }, [showSettingsMenu, isCollapsed, noteId]);
 
   // Snapping & Auto-hide event listeners
   useEffect(() => {
@@ -1243,7 +1223,16 @@ function Note({ noteId }) {
           <div className="settings-trigger" ref={settingsMenuRef}>
             <button 
               className={`action-btn ${showSettingsMenu ? "active" : ""}`} 
-              onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+              onClick={() => {
+                if (isCollapsed) {
+                  // In collapsed state, first expand the note then open settings
+                  toggleCollapse();
+                  // Open settings after a short delay to let the expand animation complete
+                  setTimeout(() => setShowSettingsMenu(true), 100);
+                } else {
+                  setShowSettingsMenu(!showSettingsMenu);
+                }
+              }}
               title="功能菜单与设置"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
