@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow as getCurrentWindow } from "@tauri-apps/api/webviewWindow";
 import { currentMonitor } from "@tauri-apps/api/window";
-import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import { PhysicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { emit, listen } from "@tauri-apps/api/event";
 import "./App.css";
 
@@ -431,12 +431,16 @@ function Note({ noteId }) {
   const [customColor, setCustomColor] = useState("");
   const [fontSize, setFontSize] = useState(14.5);
   const colorInputRef = useRef(null);
-  const colorPickerRef = useRef(null);
-  const reminderPickerRef = useRef(null);
   const helpTriggerRef = useRef(null);
   const textareaRef = useRef(null);
 
-  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsedRef = useRef(false);
+  const expandedWidth = useRef(320);
+  const expandedHeight = useRef(320);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const settingsMenuRef = useRef(null);
+
   const [showReminderPicker, setShowReminderPicker] = useState(false);
   const [showHelpPopover, setShowHelpPopover] = useState(false);
   const [editMode, setEditMode] = useState(true); // Edit vs Markdown Preview
@@ -476,14 +480,36 @@ function Note({ noteId }) {
         setFontSize(note.fontSize || 14.5);
         updateTime(note.id);
         
+        const appWindow = getCurrentWindow();
+        const monitor = await currentMonitor();
+        const scaleFactor = monitor ? monitor.scaleFactor : 1;
+
+        const collapsed = note.isCollapsed || false;
+        setIsCollapsed(collapsed);
+        isCollapsedRef.current = collapsed;
+
+        // note.w and note.h in database are physical pixels
+        const wVal = note.w || 320 * scaleFactor;
+        const hVal = note.h || 320 * scaleFactor;
+        expandedWidth.current = wVal / scaleFactor;
+        expandedHeight.current = hVal / scaleFactor;
+
         if (note.pinned) {
-          getCurrentWindow().setAlwaysOnTop(true).catch(console.error);
+          appWindow.setAlwaysOnTop(true).catch(console.error);
         }
         if (note.x !== null && note.y !== null) {
           currentPos.current = { x: note.x, y: note.y };
         }
         if (note.reminder) {
           setReminderInput(getLocalDatetimeString(note.reminder));
+        }
+
+        if (collapsed) {
+          await appWindow.setResizable(false).catch(console.error);
+          await appWindow.setSize(new LogicalSize(expandedWidth.current, 40)).catch(console.error);
+        } else {
+          await appWindow.setResizable(true).catch(console.error);
+          await appWindow.setSize(new LogicalSize(expandedWidth.current, expandedHeight.current)).catch(console.error);
         }
       }
     };
@@ -522,10 +548,8 @@ function Note({ noteId }) {
   // Handle click outside to close popovers
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target)) {
-        setShowColorPicker(false);
-      }
-      if (reminderPickerRef.current && !reminderPickerRef.current.contains(event.target)) {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target)) {
+        setShowSettingsMenu(false);
         setShowReminderPicker(false);
       }
       if (helpTriggerRef.current && !helpTriggerRef.current.contains(event.target)) {
@@ -551,12 +575,18 @@ function Note({ noteId }) {
       try {
         // Size observer
         const unResize = await appWindow.onResized(async ({ payload: size }) => {
+          if (isCollapsedRef.current) return;
           const list = await getNotesList();
           const index = list.findIndex((n) => n.id === noteId);
           if (index !== -1) {
             list[index].w = size.width;
             list[index].h = size.height;
             await saveNotesList(list);
+
+            const monitor = await currentMonitor();
+            const scaleFactor = monitor ? monitor.scaleFactor : 1;
+            expandedWidth.current = size.width / scaleFactor;
+            expandedHeight.current = size.height / scaleFactor;
           }
         });
         if (isMounted) unlisteners.push(unResize);
@@ -659,7 +689,8 @@ function Note({ noteId }) {
 
     const appWindow = getCurrentWindow();
     
-    // Don't auto-hide if user is actively editing (textarea or input has focus)
+    // Don't auto-hide if user is actively editing or if settings/reminder popovers are open
+    if (showSettingsMenu || showReminderPicker) return;
     const activeEl = document.activeElement;
     const isEditing = activeEl && (activeEl.tagName === "TEXTAREA" || activeEl.tagName === "INPUT");
     if (isEditing) return;
@@ -1062,6 +1093,72 @@ function Note({ noteId }) {
     }
   };
 
+  const getNoteTitle = () => {
+    if (!content || content.trim() === "") {
+      return "空白便签";
+    }
+    const firstLine = content.split("\n")[0].trim();
+    let cleanTitle = firstLine
+      .replace(/^#+\s+/, "")
+      .replace(/^-\s+\[[ x]\]\s+/, "")
+      .replace(/^[-*]\s+/, "")
+      .replace(/\*\*|[*_`~]/g, "");
+    
+    if (cleanTitle.trim() === "") {
+      return "无标题便签";
+    }
+    return cleanTitle.length > 15 ? cleanTitle.substring(0, 15) + "..." : cleanTitle;
+  };
+
+  const toggleCollapse = async () => {
+    const appWindow = getCurrentWindow();
+    const nextCollapsed = !isCollapsed;
+    setIsCollapsed(nextCollapsed);
+    isCollapsedRef.current = nextCollapsed;
+
+    const size = await appWindow.innerSize();
+    const monitor = await currentMonitor();
+    const scaleFactor = monitor ? monitor.scaleFactor : 1;
+
+    const logicalWidth = size.width / scaleFactor;
+    const logicalHeight = size.height / scaleFactor;
+
+    if (nextCollapsed) {
+      // Save current size to restore later
+      expandedWidth.current = logicalWidth;
+      expandedHeight.current = logicalHeight;
+
+      await appWindow.setResizable(false).catch(console.error);
+      await appWindow.setSize(new LogicalSize(logicalWidth, 40)).catch(console.error);
+    } else {
+      await appWindow.setSize(new LogicalSize(expandedWidth.current, expandedHeight.current)).catch(console.error);
+      await appWindow.setResizable(true).catch(console.error);
+    }
+
+    const list = await getNotesList();
+    const index = list.findIndex((n) => n.id === noteId);
+    if (index !== -1) {
+      list[index].isCollapsed = nextCollapsed;
+      list[index].w = size.width;
+      if (!nextCollapsed) {
+        list[index].h = expandedHeight.current * scaleFactor;
+      }
+      await saveNotesList(list);
+    }
+  };
+
+  const handleMouseDown = async (e) => {
+    // Only drag on left click and ignore click on buttons/inputs/pickers
+    if (e.button === 0 && !e.target.closest("button") && !e.target.closest("input") && !e.target.closest(".segment")) {
+      try {
+        const appWindow = getCurrentWindow();
+        await appWindow.startDragging();
+      } catch (err) {
+        console.error("Error starting dragging:", err);
+      }
+    }
+  };
+
   // Parse Markdown & Checklist rendering
   const renderMarkdown = () => {
     const lines = content.split("\n");
@@ -1126,7 +1223,7 @@ function Note({ noteId }) {
 
   return (
     <div 
-      className={`note-container morandi-${color} ${pinned ? "pinned" : ""}`}
+      className={`note-container morandi-${color} ${pinned ? "pinned" : ""} ${isCollapsed ? "is-collapsed" : ""}`}
       style={{
         "--note-opacity": opacity,
         "--note-header-opacity": Math.min(1.0, opacity + 0.1),
@@ -1136,8 +1233,12 @@ function Note({ noteId }) {
       onMouseEnter={handleMouseEnter}
     >
       {/* Header bar */}
-      <div className="note-header" data-tauri-drag-region>
-        <div className="header-left" data-tauri-drag-region>
+      <div 
+        className="note-header" 
+        onMouseDown={handleMouseDown}
+        onDoubleClick={toggleCollapse}
+      >
+        <div className="header-left">
           <button className="action-btn" onClick={handleCreateNewNote} title="新建便签">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -1145,150 +1246,160 @@ function Note({ noteId }) {
             </svg>
           </button>
           
-          {/* Color palette */}
-          <div className="color-picker-trigger" ref={colorPickerRef}>
+          {/* Settings Trigger & Popover */}
+          <div className="settings-trigger" ref={settingsMenuRef}>
             <button 
-              className={`action-btn ${showColorPicker ? "active" : ""}`} 
-              onClick={() => { setShowColorPicker(!showColorPicker); setShowReminderPicker(false); }}
-              title="更改颜色"
+              className={`action-btn ${showSettingsMenu ? "active" : ""}`} 
+              onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+              title="功能菜单与设置"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9"></circle>
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
               </svg>
             </button>
             
-            {showColorPicker && (
-              <div className="color-palette-popover color-picker-with-opacity">
-                <div className="color-dots-row">
-                  {["yellow", "green", "blue", "purple", "pink", "grey", "dark"].map((c) => (
+            {showSettingsMenu && (
+              <div className="settings-menu-popover">
+                {/* 1. Color Selector */}
+                <div className="settings-menu-section">
+                  <div className="settings-section-title">便签主题颜色</div>
+                  <div className="color-dots-row">
+                    {["yellow", "green", "blue", "purple", "pink", "grey", "dark"].map((c) => (
+                      <div
+                        key={c}
+                        className={`color-dot ${color === c ? "active" : ""}`}
+                        style={{
+                          background: c === "dark" 
+                            ? "#1e293b" 
+                            : c === "yellow" 
+                            ? "#fef3c7" 
+                            : c === "green" 
+                            ? "#d1fae5" 
+                            : c === "blue" 
+                            ? "#e0f2fe" 
+                            : c === "purple" 
+                            ? "#f3e8ff" 
+                            : c === "pink" 
+                            ? "#ffe4e6" 
+                            : "#f1f5f9"
+                        }}
+                        onClick={() => handleSelectColor(c)}
+                      />
+                    ))}
                     <div
-                      key={c}
-                      className={`color-dot ${color === c ? "active" : ""}`}
+                      className={`color-dot custom-color-dot ${color === "custom" ? "active" : ""}`}
                       style={{
-                        background: c === "dark" 
-                          ? "#1e293b" 
-                          : c === "yellow" 
-                          ? "#fef3c7" 
-                          : c === "green" 
-                          ? "#d1fae5" 
-                          : c === "blue" 
-                          ? "#e0f2fe" 
-                          : c === "purple" 
-                          ? "#f3e8ff" 
-                          : c === "pink" 
-                          ? "#ffe4e6" 
-                          : "#f1f5f9"
+                        background: customColor || "linear-gradient(135deg, #ff0055, #00ffcc, #9900ff)"
                       }}
-                      onClick={() => handleSelectColor(c)}
-                    />
-                  ))}
-                  <div
-                    className={`color-dot custom-color-dot ${color === "custom" ? "active" : ""}`}
-                    style={{
-                      background: customColor || "linear-gradient(135deg, #ff0055, #00ffcc, #9900ff)"
-                    }}
-                    onClick={handleCustomColorClick}
-                    title="自定义颜色"
-                  >
-                    {!customColor && <span className="custom-color-plus">+</span>}
+                      onClick={handleCustomColorClick}
+                      title="自定义颜色"
+                    >
+                      {!customColor && <span className="custom-color-plus">+</span>}
+                    </div>
                   </div>
-                </div>
-                <div className="opacity-slider-container">
-                  <span className="opacity-label">透明度</span>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="1.0"
-                    step="0.05"
-                    value={opacity}
-                    onChange={handleOpacityChange}
-                    className="opacity-slider"
+                  <div className="opacity-slider-container">
+                    <span className="opacity-label">透明度</span>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1.0"
+                      step="0.05"
+                      value={opacity}
+                      onChange={handleOpacityChange}
+                      className="opacity-slider"
+                    />
+                    <span className="opacity-value">{Math.round(opacity * 100)}%</span>
+                  </div>
+                  <input 
+                    type="color"
+                    ref={colorInputRef}
+                    value={customColor || "#ffffff"}
+                    onChange={handleCustomColorChange}
+                    style={{ display: "none" }}
                   />
-                  <span className="opacity-value">{Math.round(opacity * 100)}%</span>
                 </div>
-                <input 
-                  type="color"
-                  ref={colorInputRef}
-                  value={customColor || "#ffffff"}
-                  onChange={handleCustomColorChange}
-                  style={{ display: "none" }}
-                />
+                
+                <div className="settings-menu-divider" />
+
+                {/* 2. Alarm Reminder */}
+                <div className="settings-menu-section">
+                  <div 
+                    className={`settings-menu-row ${reminder ? "active" : ""}`}
+                    onClick={() => {
+                      const nextVal = !showReminderPicker;
+                      setShowReminderPicker(nextVal);
+                      if (nextVal && !reminderInput) {
+                        setReminderInput(getLocalDatetimeString(Date.now()));
+                      }
+                    }}
+                  >
+                    <span>⏰ {reminder ? "查看/修改提醒" : "设置定时提醒"}</span>
+                    <span className="expand-arrow">{showReminderPicker ? "▲" : "▼"}</span>
+                  </div>
+
+                  {showReminderPicker && (() => {
+                    const padVal = (num) => String(num).padStart(2, "0");
+                    const year = selectedDate.getFullYear();
+                    const month = selectedDate.getMonth() + 1;
+                    const day = selectedDate.getDate();
+                    const hour = selectedDate.getHours();
+                    const minute = selectedDate.getMinutes();
+
+                    return (
+                      <div className="settings-reminder-picker-container">
+                        <div className="segmented-datetime-picker">
+                          <div className="segments-container">
+                            <span className={`segment ${activeSegment === "year" ? "active" : ""}`} onClick={() => setActiveSegment("year")}>{year}</span>
+                            <span className="separator">/</span>
+                            <span className={`segment ${activeSegment === "month" ? "active" : ""}`} onClick={() => setActiveSegment("month")}>{padVal(month)}</span>
+                            <span className="separator">/</span>
+                            <span className={`segment ${activeSegment === "day" ? "active" : ""}`} onClick={() => setActiveSegment("day")}>{padVal(day)}</span>
+                            <span className="segment-spacer" />
+                            <span className={`segment ${activeSegment === "hour" ? "active" : ""}`} onClick={() => setActiveSegment("hour")}>{padVal(hour)}</span>
+                            <span className="separator">:</span>
+                            <span className={`segment ${activeSegment === "minute" ? "active" : ""}`} onClick={() => setActiveSegment("minute")}>{padVal(minute)}</span>
+                          </div>
+                          <div className="spin-buttons">
+                            <button className="spin-btn" onClick={handleIncrement} title="增加当前项">▲</button>
+                            <button className="spin-btn" onClick={handleDecrement} title="减少当前项">▼</button>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: "6px", width: "100%" }}>
+                          <button className="save-btn" style={{ flex: 1, padding: "4px 8px", fontSize: "11px", border: "none", borderRadius: "4px", background: "#3b82f6", color: "white", cursor: "pointer" }} onClick={handleSaveReminder}>保存</button>
+                          {reminder && (
+                            <button className="clear-btn" style={{ padding: "4px 8px", fontSize: "11px", border: "none", borderRadius: "4px", background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", cursor: "pointer" }} onClick={handleClearReminder}>清除</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                <div className="settings-menu-divider" />
+
+                {/* 3. Open Hub */}
+                <div 
+                  className="settings-menu-row"
+                  onClick={() => {
+                    handleOpenHub();
+                    setShowSettingsMenu(false);
+                  }}
+                >
+                  <span>📁 便签管理中心</span>
+                </div>
               </div>
             )}
           </div>
-
-          {/* Alarm Reminder */}
-          <div className="reminder-trigger" ref={reminderPickerRef}>
-            <button 
-              className={`action-btn ${reminder ? "active" : ""} ${showReminderPicker ? "active" : ""}`}
-              onClick={() => {
-                const nextVal = !showReminderPicker;
-                setShowReminderPicker(nextVal);
-                setShowColorPicker(false);
-                if (nextVal && !reminderInput) {
-                  setReminderInput(getLocalDatetimeString(Date.now()));
-                }
-              }}
-              title={reminder ? "设置了定时提醒" : "设置提醒"}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-            </button>
-
-            {showReminderPicker && (() => {
-              const padVal = (num) => String(num).padStart(2, "0");
-              const year = selectedDate.getFullYear();
-              const month = selectedDate.getMonth() + 1;
-              const day = selectedDate.getDate();
-              const hour = selectedDate.getHours();
-              const minute = selectedDate.getMinutes();
-
-              return (
-                <div className="reminder-popover">
-                  <div style={{ fontWeight: 600, marginBottom: "8px", fontSize: "12px", color: "inherit" }}>📅 设置便签提醒</div>
-                  
-                  <div className="segmented-datetime-picker">
-                    <div className="segments-container">
-                      <span className={`segment ${activeSegment === "year" ? "active" : ""}`} onClick={() => setActiveSegment("year")}>{year}</span>
-                      <span className="separator">/</span>
-                      <span className={`segment ${activeSegment === "month" ? "active" : ""}`} onClick={() => setActiveSegment("month")}>{padVal(month)}</span>
-                      <span className="separator">/</span>
-                      <span className={`segment ${activeSegment === "day" ? "active" : ""}`} onClick={() => setActiveSegment("day")}>{padVal(day)}</span>
-                      <span className="segment-spacer" />
-                      <span className={`segment ${activeSegment === "hour" ? "active" : ""}`} onClick={() => setActiveSegment("hour")}>{padVal(hour)}</span>
-                      <span className="separator">:</span>
-                      <span className={`segment ${activeSegment === "minute" ? "active" : ""}`} onClick={() => setActiveSegment("minute")}>{padVal(minute)}</span>
-                    </div>
-                    <div className="spin-buttons">
-                      <button className="spin-btn" onClick={handleIncrement} title="增加数值">▲</button>
-                      <button className="spin-btn" onClick={handleDecrement} title="减少数值">▼</button>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: "8px", marginTop: "10px", width: "100%" }}>
-                    <button className="save-btn" style={{ flex: 1, padding: "6px 12px", fontSize: "11px" }} onClick={handleSaveReminder}>保存</button>
-                    {reminder && <button className="clear-btn" style={{ padding: "6px 12px", fontSize: "11px" }} onClick={handleClearReminder}>取消提醒</button>}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Notes Hub */}
-          <button className="action-btn" onClick={handleOpenHub} title="便签管理中心">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="7" height="9"></rect>
-              <rect x="14" y="3" width="7" height="5"></rect>
-              <rect x="14" y="12" width="7" height="9"></rect>
-              <rect x="3" y="16" width="7" height="5"></rect>
-            </svg>
-          </button>
+          
+          {/* Collapsed title shown on the left */}
+          {isCollapsed && <div className="collapsed-title">{getNoteTitle()}</div>}
         </div>
-        
-        <div className="header-right" data-tauri-drag-region>
+
+        {/* Expanded title shown in the center when not hovered */}
+        {!isCollapsed && <div className="expanded-title-center">{getNoteTitle()}</div>}
+
+        <div className="header-right">
           {/* Edit Mode Toggle */}
           <button 
             className={`action-btn ${!editMode ? "active" : ""}`}

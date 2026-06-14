@@ -1202,3 +1202,174 @@ html, body, #root {
   text-align: center;
   user-select: none;
 }
+
+/* ========================================= */
+/* Collapsible Note & settings Popover v3.0  */
+/* ========================================= */
+
+.note-container.is-collapsed {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.note-container.is-collapsed .note-body,
+.note-container.is-collapsed .note-footer {
+  display: none !important;
+}
+
+/* Auto-hide header buttons */
+.note-header .header-left,
+.note-header .header-right {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.note-container:hover .note-header .header-left,
+.note-container:hover .note-header .header-right {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Expanded title in the center (visible when NOT hovered) */
+.expanded-title-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--note-text);
+  opacity: 0.7;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.note-container:hover .expanded-title-center {
+  opacity: 0;
+}
+
+/* Collapsed title on the left (visible when NOT hovered) */
+.collapsed-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--note-text);
+  opacity: 0.8;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+  margin-left: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.note-container:hover .collapsed-title {
+  opacity: 0;
+}
+
+/* Consolidated settings menu popover */
+.settings-trigger {
+  position: relative;
+}
+
+.settings-menu-popover {
+  position: absolute;
+  top: 32px;
+  left: 0;
+  width: 220px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  padding: 12px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--note-text);
+  animation: fadeIn 0.15s ease-out;
+  box-sizing: border-box;
+}
+
+.morandi-dark .settings-menu-popover {
+  background: rgba(30, 41, 59, 0.96);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.settings-menu-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.settings-section-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.morandi-dark .settings-section-title {
+  color: #94a3b8;
+}
+
+.settings-menu-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+  width: 100%;
+}
+
+.morandi-dark .settings-menu-divider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.settings-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  color: var(--note-text);
+}
+
+.settings-menu-row:hover {
+  background: var(--button-hover);
+}
+
+.expand-arrow {
+  font-size: 8px;
+  opacity: 0.7;
+}
+
+.settings-reminder-picker-container {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  box-sizing: border-box;
+}
+
+.morandi-dark .settings-reminder-picker-container {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
