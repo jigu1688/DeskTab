@@ -1382,3 +1382,9 @@ html, body, #root {
   overflow: visible !important;
 }
 
+.note-container.is-collapsed.settings-open {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+}
+
