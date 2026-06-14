@@ -1152,8 +1152,16 @@ function Note({ noteId }) {
   };
 
   const handleMouseDown = async (e) => {
-    // Only drag on left click and ignore click on buttons/inputs/pickers
-    if (e.button === 0 && !e.target.closest("button") && !e.target.closest("input") && !e.target.closest(".segment")) {
+    // Only drag on left click and ignore click on buttons/inputs/pickers/popovers
+    if (
+      e.button === 0 && 
+      !e.target.closest("button") && 
+      !e.target.closest("input") && 
+      !e.target.closest(".segment") &&
+      !e.target.closest(".settings-menu-popover") &&
+      !e.target.closest(".markdown-help-popover") &&
+      !e.target.closest(".color-dot")
+    ) {
       if (e.detail === 2) {
         // Double click detected: toggle collapse/expand
         toggleCollapse();
