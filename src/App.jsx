@@ -505,9 +505,11 @@ function Note({ noteId }) {
         }
 
         if (collapsed) {
+          await appWindow.setMinSize(new LogicalSize(200, 40)).catch(console.error);
           await appWindow.setResizable(false).catch(console.error);
           await appWindow.setSize(new LogicalSize(expandedWidth.current, 40)).catch(console.error);
         } else {
+          await appWindow.setMinSize(new LogicalSize(200, 150)).catch(console.error);
           await appWindow.setResizable(true).catch(console.error);
           await appWindow.setSize(new LogicalSize(expandedWidth.current, expandedHeight.current)).catch(console.error);
         }
@@ -1128,9 +1130,11 @@ function Note({ noteId }) {
       expandedWidth.current = logicalWidth;
       expandedHeight.current = logicalHeight;
 
+      await appWindow.setMinSize(new LogicalSize(200, 40)).catch(console.error);
       await appWindow.setResizable(false).catch(console.error);
       await appWindow.setSize(new LogicalSize(logicalWidth, 40)).catch(console.error);
     } else {
+      await appWindow.setMinSize(new LogicalSize(200, 150)).catch(console.error);
       await appWindow.setSize(new LogicalSize(expandedWidth.current, expandedHeight.current)).catch(console.error);
       await appWindow.setResizable(true).catch(console.error);
     }
