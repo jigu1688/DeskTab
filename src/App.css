@@ -1322,6 +1322,17 @@ html, body, #root {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+/* In collapsed state the container is transparent, so disable popover blur to avoid frosting the desktop */
+.note-container.is-collapsed .settings-menu-popover {
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.note-container.is-collapsed.morandi-dark .settings-menu-popover {
+  background: #1e293b;
+}
+
 .settings-menu-section {
   display: flex;
   flex-direction: column;
