@@ -72,6 +72,7 @@ fn create_note_window_sync(
             .title("DeskTab Note")
             .decorations(false)
             .transparent(true)
+            .skip_taskbar(true)
             .min_inner_size(200.0, 150.0);
 
         if let (Some(x), Some(y)) = (x, y) {
